@@ -43,7 +43,11 @@
       "Bash(netstat -ano)",
       "Bash(npx tsc *)",
       "Bash(mv proxy.ts src/proxy.ts)",
-      "Bash(ls src/*.ts)"
+      "Bash(ls src/*.ts)",
+      "Bash(npx eslint *)",
+      "Bash(cmd *)",
+      "Bash(node -e \"const l = require\\('/d/selfProject/PayLeft/node_modules/lucide-react'\\); console.log\\(typeof l.Download, typeof l.FileSpreadsheet, typeof l.FileText, typeof l.Loader2\\)\")",
+      "Bash(grep -o \"\\\\.bg-white\\\\\\\\\\\\\\\\/10{[^}]*}\" /d/selfProject/PayLeft/.next/static/chunks/03yicquwogc4p.css)"
     ]
   }
 }
