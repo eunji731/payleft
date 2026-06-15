@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 
 interface BulkItem {
   name: string;
@@ -10,39 +11,39 @@ interface BulkItem {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const items: BulkItem[] = body.items ?? [];
-  const overwrite: boolean = body.overwrite ?? false;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  let created = 0;
-  let updated = 0;
-  let skipped = 0;
-
-  for (const item of items) {
-    const data = {
-      name: item.name,
-      payDate: item.payDate,
-      currentInstallment: Number(item.currentInstallment),
-      totalInstallment: Number(item.totalInstallment),
-      amount: Number(item.amount),
-    };
-
-    const existing = await prisma.installment.findUnique({
-      where: { name_payDate: { name: data.name, payDate: data.payDate } },
-    });
-
-    if (existing) {
-      if (overwrite) {
-        await prisma.installment.update({ where: { id: existing.id }, data });
-        updated++;
-      } else {
-        skipped++;
-      }
-    } else {
-      await prisma.installment.create({ data });
-      created++;
-    }
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json({ created, updated, skipped });
+  const body = await request.json();
+  const items: BulkItem[] = body.items ?? [];
+  const title: string = body.title ?? "";
+
+  const normalizedItems = items.map((item) => ({
+    name: item.name,
+    payDate: item.payDate,
+    currentInstallment: Number(item.currentInstallment),
+    totalInstallment: Number(item.totalInstallment),
+    amount: Number(item.amount),
+  }));
+
+  await prisma.$transaction([
+    prisma.installment.deleteMany({ where: { userId: user.id } }),
+    prisma.installment.createMany({
+      data: normalizedItems.map((item) => ({ ...item, userId: user.id })),
+    }),
+    prisma.importBatch.create({
+      data: {
+        userId: user.id,
+        title,
+        itemCount: normalizedItems.length,
+        items: normalizedItems,
+      },
+    }),
+  ]);
+
+  return NextResponse.json({ count: items.length });
 }

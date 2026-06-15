@@ -25,7 +25,25 @@
       "Bash(node screenshot2.mjs)",
       "Bash(node screenshot3.mjs)",
       "PowerShell(Get-Process *)",
-      "Bash(node verify.mjs)"
+      "Bash(node verify.mjs)",
+      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\"; cat {}')",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "Bash(curl *)",
+      "Bash(jobs)",
+      "Bash(node repro.mjs)",
+      "Bash(npm ls *)",
+      "Bash(node -e ' *)",
+      "Bash(npx prisma *)",
+      "Bash(tasklist)",
+      "Bash(taskkill *)",
+      "Bash(node --no-warnings prisma/migrate-data.mjs)",
+      "Bash(disown)",
+      "Bash(node -e \"console.log\\(JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\).length\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(npx tsc *)",
+      "Bash(mv proxy.ts src/proxy.ts)",
+      "Bash(ls src/*.ts)"
     ]
   }
 }

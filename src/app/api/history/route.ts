@@ -10,9 +10,11 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const installments = await prisma.installment.findMany({
+  const batches = await prisma.importBatch.findMany({
     where: { userId: user.id },
-    orderBy: { payDate: "asc" },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, title: true, itemCount: true, createdAt: true },
   });
-  return NextResponse.json(installments);
+
+  return NextResponse.json(batches);
 }

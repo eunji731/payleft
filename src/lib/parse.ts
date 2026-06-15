@@ -31,7 +31,7 @@ export function parseInstallmentText(text: string): ParsedItem[] {
 
     if (lines.length < 3) continue;
 
-    const nameMatch = lines[0].match(/분할납부\(([^)]*)\)/);
+    const nameMatch = lines[0].match(/^분할납부\((.+)\)$/);
     const name = nameMatch ? nameMatch[1] : lines[0];
 
     const dateMatch = lines[1].match(/(\d{4})\.(\d{2})\.(\d{2})\s+(\d+)\/(\d+)\s*회차/);

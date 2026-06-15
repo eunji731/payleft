@@ -1,13 +1,15 @@
 -- CreateTable
 CREATE TABLE "Installment" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "payDate" TEXT NOT NULL,
     "currentInstallment" INTEGER NOT NULL,
     "totalInstallment" INTEGER NOT NULL,
-    "amount" REAL NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "amount" DOUBLE PRECISION NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Installment_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex

@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ParsedItem, parseInstallmentText } from "@/lib/parse";
 import { formatWon } from "@/lib/format";
 import { FileText, Save, Send, Trash2 } from "lucide-react";
 
 export default function ImportPage() {
+  const router = useRouter();
   const [text, setText] = useState("");
   const [items, setItems] = useState<ParsedItem[]>([]);
+  const [title, setTitle] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -31,39 +34,39 @@ export default function ImportPage() {
 
   async function handleSaveAll() {
     if (items.length === 0) return;
+
+    if (!title.trim()) {
+      setMessage("이력 제목을 입력해주세요.");
+      return;
+    }
+
+    const confirmed = confirm(
+      `현재 저장된 할부 데이터를 모두 삭제하고, 이 ${items.length}건으로 교체합니다.\n계속하시겠습니까?`
+    );
+    if (!confirmed) return;
+
     setSaving(true);
     setMessage(null);
 
     try {
-      const checkRes = await fetch("/api/installments/bulk-check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: items.map((i) => ({ name: i.name, payDate: i.payDate })) }),
-      });
-      const { duplicates } = await checkRes.json();
-
-      let overwrite = false;
-      if (duplicates.length > 0) {
-        const names = duplicates
-          .map((d: { name: string; payDate: string }) => `${d.name} (${d.payDate})`)
-          .join(", ");
-        overwrite = confirm(
-          `다음 ${duplicates.length}개 항목은 이미 존재합니다:\n${names}\n\n덮어쓰시겠습니까? (취소하면 해당 항목은 건너뜁니다)`
-        );
-      }
-
       const saveRes = await fetch("/api/installments/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, overwrite }),
+        body: JSON.stringify({ items, title: title.trim() }),
       });
-      const result = await saveRes.json();
 
-      setMessage(
-        `저장 완료: 신규 ${result.created}건, 덮어쓰기 ${result.updated}건, 건너뜀 ${result.skipped}건`
-      );
+      if (!saveRes.ok) {
+        setMessage("저장 중 오류가 발생했습니다.");
+        return;
+      }
+
+      const result = await saveRes.json();
+      setMessage(`${result.count}건으로 교체 완료되었습니다.`);
       setItems([]);
       setText("");
+      setTitle("");
+      window.dispatchEvent(new Event("payleft:data-changed"));
+      router.push("/");
     } catch {
       setMessage("저장 중 오류가 발생했습니다.");
     } finally {
@@ -75,7 +78,26 @@ export default function ImportPage() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
         <h1 className="text-2xl font-black tracking-tight text-gray-900 sm:text-3xl">데이터 입력</h1>
-        <p className="mt-1 text-sm font-medium text-gray-500">카드사에서 복사한 텍스트를 붙여넣어 할부 항목을 추가합니다.</p>
+        <p className="mt-1 text-sm font-medium text-gray-500">할부 항목을 파싱하여 시스템에 등록합니다.</p>
+        
+        {/* Guide Section */}
+        <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50/50 p-6">
+          <div className="flex items-start gap-4">
+            <div className="rounded-xl bg-blue-600 p-2 text-white">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-blue-900">데이터 수집 방법</h3>
+              <p className="mt-1 text-xs font-medium leading-relaxed text-blue-700/80">
+                <span className="font-black text-blue-800">신한카드 홈페이지/앱</span> &gt; 마이페이지 &gt; <span className="font-black text-blue-800">할부납부목록</span>의 텍스트를 전체 복사하여 아래에 붙여넣어 주세요.
+              </p>
+              <div className="mt-3 flex items-center gap-1.5">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />
+                <p className="text-[11px] font-bold text-blue-600/70">본 시스템은 신한카드의 할부 내역 포맷에 최적화되어 있습니다.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-8">
@@ -113,19 +135,28 @@ export default function ImportPage() {
         {items.length > 0 && (
           <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4">
             <div className="border-b border-gray-50 bg-gray-50/30 px-6 py-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <Save className="h-5 w-5 text-gray-500" />
                   <h2 className="text-sm font-bold text-gray-700">파싱된 데이터 미리보기 ({items.length}건)</h2>
                 </div>
-                <button
-                  onClick={handleSaveAll}
-                  disabled={saving}
-                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-md shadow-emerald-100 disabled:opacity-50 active:scale-95 transition-all"
-                >
-                  <Save className="h-4 w-4" />
-                  {saving ? "저장 중..." : "전체 저장하기"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="이력 제목 (예: 2026년 6월 신한카드)"
+                    className="w-56 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                  />
+                  <button
+                    onClick={handleSaveAll}
+                    disabled={saving}
+                    className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-md shadow-emerald-100 disabled:opacity-50 active:scale-95 transition-all"
+                  >
+                    <Save className="h-4 w-4" />
+                    {saving ? "저장 중..." : "전체 저장하기"}
+                  </button>
+                </div>
               </div>
             </div>
             <div className="p-4">

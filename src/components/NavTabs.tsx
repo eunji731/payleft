@@ -1,16 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { CreditCard, Database, LayoutDashboard } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { CreditCard, Database, History, LayoutDashboard, LogOut } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 const tabs = [
   { href: "/", label: "대시보드", icon: LayoutDashboard },
   { href: "/import", label: "데이터 입력", icon: Database },
+  { href: "/history", label: "저장 이력", icon: History },
 ];
 
 export default function NavTabs() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [userLabel, setUserLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    supabase.auth.getUser().then(({ data }) => {
+      const user = data.user;
+      setUserLabel(
+        user ? (user.user_metadata?.name ?? user.user_metadata?.nickname ?? user.email ?? "사용자") : null
+      );
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user;
+      setUserLabel(
+        user ? (user.user_metadata?.name ?? user.user_metadata?.nickname ?? user.email ?? "사용자") : null
+      );
+    });
+
+    return () => subscription.subscription.unsubscribe();
+  }, []);
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
 
   return (
     <nav className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-md">
@@ -28,7 +59,7 @@ export default function NavTabs() {
 
             <div className="flex h-16 items-center gap-1">
               {tabs.map((tab) => {
-                const active = pathname === tab.href;
+                const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
                 const Icon = tab.icon;
                 return (
                   <Link
@@ -52,10 +83,18 @@ export default function NavTabs() {
           </div>
 
           <div className="flex items-center gap-3">
-             <div className="hidden sm:flex items-center gap-2 rounded-full bg-gray-50 px-3 py-1.5 border border-gray-100">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[11px] font-bold text-gray-500">Live Sync</span>
-             </div>
+             {userLabel && (
+               <span className="hidden text-xs font-bold text-gray-500 sm:inline">{userLabel}</span>
+             )}
+             {userLabel && (
+               <button
+                 onClick={handleLogout}
+                 className="flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-[11px] font-bold text-gray-500 border border-gray-100 hover:bg-gray-100 hover:text-gray-700 transition-all"
+               >
+                 <LogOut className="h-3.5 w-3.5" />
+                 로그아웃
+               </button>
+             )}
           </div>
         </div>
       </div>
