@@ -75,7 +75,20 @@ export async function exportDashboardToExcel(
     }))
   );
 
+  const generatedAt = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const infoSheet = XLSX.utils.aoa_to_sheet([
+    ["생성일시", generatedAt],
+    ["할부이자", annualRatePercent > 0 ? `포함 (연 ${annualRatePercent}%)` : "미포함 (원금 기준)"],
+  ]);
+
   const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, infoSheet, "안내");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(itemRows), "할부 항목");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryRows), "월별 합계");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detailRows), "월별 상세");
