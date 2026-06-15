@@ -9,6 +9,7 @@ import MonthlyChart from "@/components/MonthlyChart";
 import InstallmentList from "@/components/InstallmentList";
 import MonthlyDetailTable from "@/components/MonthlyDetailTable";
 import EditableTitle from "@/components/EditableTitle";
+import InterestRateControl from "@/components/InterestRateControl";
 import { getSummaryStats, InstallmentItem } from "@/lib/calc";
 
 interface BatchDetail {
@@ -25,6 +26,8 @@ export default function HistoryDetailPage() {
   const [batch, setBatch] = useState<BatchDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [interestEnabled, setInterestEnabled] = useState(false);
+  const [interestRate, setInterestRate] = useState("");
 
   useEffect(() => {
     fetch(`/api/history/${params.id}`, { cache: "no-store" })
@@ -62,7 +65,8 @@ export default function HistoryDetailPage() {
   }
 
   const items: InstallmentItem[] = batch.items.map((item, index) => ({ ...item, id: index }));
-  const stats = getSummaryStats(items);
+  const annualRatePercent = interestEnabled ? Number(interestRate) || 0 : 0;
+  const stats = getSummaryStats(items, new Date(), annualRatePercent);
   const savedAt = new Date(batch.createdAt).toLocaleString("ko-KR", {
     year: "numeric",
     month: "long",
@@ -98,9 +102,18 @@ export default function HistoryDetailPage() {
             {savedAt} 저장 · {batch.itemCount}건의 할부 현황입니다.
           </p>
           <p className="mt-1 text-xs font-medium text-gray-400">
-            * 할부이자는 제외하고, 원금 납부액만 기준으로 계산된 대시보드입니다.
+            {interestEnabled
+              ? `* 연 ${annualRatePercent}% 할부이자를 포함하여 계산된 대시보드입니다.`
+              : "* 할부이자는 제외하고, 원금 납부액만 기준으로 계산된 대시보드입니다."}
           </p>
         </div>
+
+        <InterestRateControl
+          enabled={interestEnabled}
+          onEnabledChange={setInterestEnabled}
+          rate={interestRate}
+          onRateChange={setInterestRate}
+        />
       </div>
 
       <div className="space-y-8">
@@ -116,7 +129,7 @@ export default function HistoryDetailPage() {
         </div>
 
         <div className="grid grid-cols-1">
-          <InstallmentList items={items} />
+          <InstallmentList items={items} annualRatePercent={annualRatePercent} />
         </div>
       </div>
     </div>

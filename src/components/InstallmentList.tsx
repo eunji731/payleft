@@ -6,9 +6,10 @@ import { List } from "lucide-react";
 
 interface Props {
   items: InstallmentItem[];
+  annualRatePercent?: number;
 }
 
-export default function InstallmentList({ items }: Props) {
+export default function InstallmentList({ items, annualRatePercent = 0 }: Props) {
   return (
     <div className="flex flex-col rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
       <div className="border-b border-gray-50 bg-gray-50/30 px-6 py-4">
@@ -35,7 +36,7 @@ export default function InstallmentList({ items }: Props) {
             <tbody className="divide-y divide-gray-50">
               {items.map((item) => {
                 const remaining = getRemainingInstallments(item);
-                const monthly = getMonthlyPayment(item);
+                const monthly = getMonthlyPayment(item, annualRatePercent);
 
                 return (
                   <tr key={item.id} className="group hover:bg-gray-50/50 transition-colors">
