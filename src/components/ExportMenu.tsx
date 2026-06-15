@@ -10,9 +10,16 @@ interface Props {
   stats: SummaryStats;
   annualRatePercent: number;
   fileNamePrefix: string;
+  minimal?: boolean;
 }
 
-export default function ExportMenu({ items, stats, annualRatePercent, fileNamePrefix }: Props) {
+export default function ExportMenu({ 
+  items, 
+  stats, 
+  annualRatePercent, 
+  fileNamePrefix,
+  minimal = false
+}: Props) {
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,15 +52,25 @@ export default function ExportMenu({ items, stats, annualRatePercent, fileNamePr
     }
   }
 
+  const buttonClasses = minimal
+    ? "flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-all"
+    : "flex items-center gap-2 rounded-2xl border border-gray-100 bg-white px-4 py-2.5 text-xs font-bold text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 transition-all";
+
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
         disabled={exporting !== null}
-        className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-white px-4 py-2.5 text-xs font-bold text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 transition-all"
+        className={buttonClasses}
       >
-        {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-        {exporting === "pdf" ? "PDF 생성 중..." : exporting === "excel" ? "Excel 생성 중..." : "내보내기"}
+        {exporting ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Download className={`h-3.5 w-3.5 ${minimal ? "text-indigo-500" : ""}`} />
+        )}
+        <span>
+          {exporting === "pdf" ? "PDF..." : exporting === "excel" ? "Excel..." : "내보내기"}
+        </span>
       </button>
 
       {open && (

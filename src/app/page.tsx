@@ -8,8 +8,7 @@ import MonthlyChart from "@/components/MonthlyChart";
 import InstallmentList from "@/components/InstallmentList";
 import MonthlyDetailTable from "@/components/MonthlyDetailTable";
 import EditableTitle from "@/components/EditableTitle";
-import InterestRateControl from "@/components/InterestRateControl";
-import ExportMenu from "@/components/ExportMenu";
+import DashboardToolbar from "@/components/DashboardToolbar";
 import { LayoutDashboard } from "lucide-react";
 
 interface LatestBatch {
@@ -106,20 +105,15 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <InterestRateControl
-            enabled={interestEnabled}
-            onEnabledChange={setInterestEnabled}
-            rate={interestRate}
-            onRateChange={setInterestRate}
-          />
-          <ExportMenu
-            items={items}
-            stats={stats}
-            annualRatePercent={annualRatePercent}
-            fileNamePrefix={latestBatch?.title || "PayLeft"}
-          />
-        </div>
+        <DashboardToolbar
+          items={items}
+          stats={stats}
+          interestEnabled={interestEnabled}
+          onInterestEnabledChange={setInterestEnabled}
+          interestRate={interestRate}
+          onInterestRateChange={setInterestRate}
+          fileNamePrefix={latestBatch?.title || "PayLeft"}
+        />
       </div>
 
       <div className="space-y-8">
