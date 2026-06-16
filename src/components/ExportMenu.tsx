@@ -1,4 +1,14 @@
 "use client";
+/**
+ * ExportMenu.tsx — PDF/Excel 내보내기 드롭다운 메뉴
+ *
+ * "내보내기" 버튼을 클릭하면 드롭다운이 열리고, PDF 또는 Excel을 선택할 수 있습니다.
+ *
+ * [지연 로딩(Lazy Loading)]
+ * PDF/Excel 라이브러리(jsPDF, xlsx)는 용량이 크기 때문에
+ * 앱 초기 로딩 시 불러오지 않고, 내보내기 버튼을 클릭할 때만 import합니다.
+ * 이렇게 하면 초기 페이지 로딩 속도가 빨라집니다.
+ */
 
 import { useState } from "react";
 import { Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
@@ -9,29 +19,29 @@ interface Props {
   items: InstallmentItem[];
   stats: SummaryStats;
   annualRatePercent: number;
-  fileNamePrefix: string;
-  minimal?: boolean;
+  fileNamePrefix: string;    // 저장될 파일명의 앞부분 (예: "2026년 6월 신한카드")
+  minimal?: boolean;         // 툴바 내장용 간결 레이아웃 여부
 }
 
-export default function ExportMenu({ 
-  items, 
-  stats, 
-  annualRatePercent, 
+export default function ExportMenu({
+  items,
+  stats,
+  annualRatePercent,
   fileNamePrefix,
-  minimal = false
+  minimal = false,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handlePdf() {
-    setOpen(false);
+    setIsOpen(false);
     setExporting("pdf");
     setError(null);
     try {
       await exportDashboardToPdf(items, stats, annualRatePercent, fileNamePrefix, `${fileNamePrefix}.pdf`);
     } catch (err) {
-      console.error("PDF export failed", err);
+      console.error("PDF 내보내기 실패", err);
       setError("PDF 생성에 실패했습니다.");
     } finally {
       setExporting(null);
@@ -39,13 +49,13 @@ export default function ExportMenu({
   }
 
   async function handleExcel() {
-    setOpen(false);
+    setIsOpen(false);
     setExporting("excel");
     setError(null);
     try {
       await exportDashboardToExcel(items, stats, annualRatePercent, `${fileNamePrefix}.xlsx`);
     } catch (err) {
-      console.error("Excel export failed", err);
+      console.error("Excel 내보내기 실패", err);
       setError("Excel 생성에 실패했습니다.");
     } finally {
       setExporting(null);
@@ -58,9 +68,10 @@ export default function ExportMenu({
 
   return (
     <div className="relative">
+      {/* 내보내기 버튼: 클릭 시 드롭다운 토글 */}
       <button
-        onClick={() => setOpen((v) => !v)}
-        disabled={exporting !== null}
+        onClick={() => setIsOpen((v) => !v)}
+        disabled={exporting !== null} // 내보내기 진행 중에는 버튼 비활성화
         className={buttonClasses}
       >
         {exporting ? (
@@ -73,9 +84,11 @@ export default function ExportMenu({
         </span>
       </button>
 
-      {open && (
+      {/* 드롭다운 메뉴 */}
+      {isOpen && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          {/* 배경 오버레이: 메뉴 외부 클릭 시 닫힘 */}
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
           <div className="absolute right-0 z-20 mt-2 w-44 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg">
             <button
               onClick={handlePdf}
@@ -95,6 +108,7 @@ export default function ExportMenu({
         </>
       )}
 
+      {/* 오류 메시지 */}
       {error && (
         <span className="absolute right-0 top-full mt-2 whitespace-nowrap rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-500">
           {error}

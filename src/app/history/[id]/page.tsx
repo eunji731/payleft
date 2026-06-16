@@ -1,4 +1,16 @@
 "use client";
+/**
+ * history/[id]/page.tsx — 이력 상세 페이지 (/history/[id])
+ *
+ * [id]는 동적 경로 세그먼트입니다.
+ * 예: /history/42 → 42번 이력의 상세 대시보드
+ *
+ * 특정 시점에 저장된 할부 데이터를 기준으로 대시보드와 동일한 UI를 보여줍니다.
+ * 과거 데이터를 기반으로 하므로 현재 시점을 기준으로 계산합니다.
+ * (예: 현재 날짜 기준으로 남은 납부 스케줄 재계산)
+ *
+ * useParams: Next.js에서 동적 경로의 파라미터를 읽는 훅입니다.
+ */
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -12,20 +24,21 @@ import EditableTitle from "@/components/EditableTitle";
 import DashboardToolbar from "@/components/DashboardToolbar";
 import { getSummaryStats, InstallmentItem } from "@/lib/calc";
 
+/** API에서 받아오는 이력 상세 데이터 구조 */
 interface BatchDetail {
   id: number;
   title: string;
   itemCount: number;
   createdAt: string;
-  items: Omit<InstallmentItem, "id">[];
+  items: Omit<InstallmentItem, "id">[]; // DB에 저장된 JSON 항목들 (id 없음)
 }
 
 export default function HistoryDetailPage() {
   const router = useRouter();
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>(); // URL에서 [id] 파라미터 추출
   const [batch, setBatch] = useState<BatchDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isNotFound, setIsNotFound] = useState(false);
   const [interestEnabled, setInterestEnabled] = useState(false);
   const [interestRate, setInterestRate] = useState("");
 
@@ -37,18 +50,18 @@ export default function HistoryDetailPage() {
           return null;
         }
         if (res.status === 404) {
-          setNotFound(true);
+          setIsNotFound(true);
           return null;
         }
         return res.json();
       })
       .then((data) => {
         setBatch(data);
-        setLoading(false);
+        setIsLoading(false);
       });
   }, [params.id, router]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
@@ -56,7 +69,7 @@ export default function HistoryDetailPage() {
     );
   }
 
-  if (notFound || !batch) {
+  if (isNotFound || !batch) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 text-center text-sm text-gray-400">
         해당 이력을 찾을 수 없습니다.
@@ -64,9 +77,13 @@ export default function HistoryDetailPage() {
     );
   }
 
+  // DB에 저장된 items에는 id가 없으므로 인덱스를 id로 사용합니다
   const items: InstallmentItem[] = batch.items.map((item, index) => ({ ...item, id: index }));
   const annualRatePercent = interestEnabled ? Number(interestRate) || 0 : 0;
+
+  // 저장 당시 데이터 + 현재 날짜를 기준으로 통계를 재계산합니다
   const stats = getSummaryStats(items, new Date(), annualRatePercent);
+
   const savedAt = new Date(batch.createdAt).toLocaleString("ko-KR", {
     year: "numeric",
     month: "long",
@@ -77,6 +94,7 @@ export default function HistoryDetailPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* 이력 목록으로 돌아가는 링크 */}
       <Link
         href="/history"
         className="mb-4 inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-900"
@@ -85,6 +103,7 @@ export default function HistoryDetailPage() {
         이력 목록
       </Link>
 
+      {/* 헤더 */}
       <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -119,6 +138,7 @@ export default function HistoryDetailPage() {
         />
       </div>
 
+      {/* 대시보드와 동일한 레이아웃 */}
       <div className="space-y-8">
         <SummaryCards stats={stats} />
 

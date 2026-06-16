@@ -1,3 +1,15 @@
+/**
+ * SummaryCards.tsx — 대시보드 상단 요약 카드 3개
+ *
+ * "use client" 없음 = 서버 컴포넌트입니다.
+ * props로 데이터를 받아서 HTML을 렌더링하기만 하므로 서버에서 처리할 수 있습니다.
+ *
+ * 표시 내용:
+ * - 다음달 납부액
+ * - 총 잔여 할부금
+ * - 완납 예정월
+ */
+
 import { SummaryStats } from "@/lib/calc";
 import { formatWon } from "@/lib/format";
 import { Calendar, CreditCard, Wallet } from "lucide-react";
@@ -7,6 +19,7 @@ interface Props {
 }
 
 export default function SummaryCards({ stats }: Props) {
+  // 카드 3개의 데이터를 배열로 정의하여 반복 렌더링합니다
   const cards = [
     {
       label: "다음달 납부액",
@@ -61,7 +74,7 @@ export default function SummaryCards({ stats }: Props) {
               {card.sub}
             </p>
           </div>
-          {/* Decorative circles for trendy look */}
+          {/* 배경 장식용 반투명 원형 blur 효과 */}
           <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
           <div className="absolute -bottom-4 -left-4 h-20 w-20 rounded-full bg-black/5 blur-2xl" />
         </div>

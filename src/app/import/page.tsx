@@ -1,4 +1,17 @@
 "use client";
+/**
+ * import/page.tsx — 데이터 입력 페이지 (/import)
+ *
+ * 신한카드 앱/홈페이지의 "할부납부목록" 텍스트를 붙여넣어
+ * 할부 항목을 파싱하고 DB에 저장하는 페이지입니다.
+ *
+ * [사용 흐름]
+ * 1. 카드사 앱에서 할부 목록 텍스트를 복사
+ * 2. 텍스트 입력 영역에 붙여넣기
+ * 3. "데이터 파싱하기" 클릭 → 텍스트를 파싱하여 테이블로 미리보기
+ * 4. 필요 시 항목을 수동으로 수정하거나 삭제
+ * 5. 이력 제목 입력 후 "전체 저장하기" 클릭 → 기존 데이터 교체 후 대시보드로 이동
+ */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -8,14 +21,15 @@ import { FileText, Save, Send, Trash2 } from "lucide-react";
 
 export default function ImportPage() {
   const router = useRouter();
-  const [text, setText] = useState("");
-  const [items, setItems] = useState<ParsedItem[]>([]);
-  const [title, setTitle] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [rawText, setRawText] = useState("");        // 텍스트 영역의 입력 내용
+  const [items, setItems] = useState<ParsedItem[]>([]); // 파싱된 항목 목록
+  const [title, setTitle] = useState("");             // 이력 제목 입력값
+  const [message, setMessage] = useState<string | null>(null); // 안내 메시지
+  const [isSaving, setIsSaving] = useState(false);
 
+  /** 텍스트 영역의 내용을 파싱하여 items 상태를 업데이트합니다 */
   function handleParse() {
-    const parsed = parseInstallmentText(text);
+    const parsed = parseInstallmentText(rawText);
     setItems(parsed);
     setMessage(
       parsed.length > 0
@@ -24,14 +38,17 @@ export default function ImportPage() {
     );
   }
 
+  /** 특정 인덱스의 항목을 수동으로 수정합니다 */
   function updateItem(index: number, patch: Partial<ParsedItem>) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
 
+  /** 특정 인덱스의 항목을 목록에서 삭제합니다 */
   function removeItem(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index));
   }
 
+  /** 파싱된 항목 전체를 API에 저장합니다 */
   async function handleSaveAll() {
     if (items.length === 0) return;
 
@@ -40,12 +57,13 @@ export default function ImportPage() {
       return;
     }
 
+    // 기존 데이터가 모두 삭제됨을 사용자에게 확인합니다
     const confirmed = confirm(
       `현재 저장된 할부 데이터를 모두 삭제하고, 이 ${items.length}건으로 교체합니다.\n계속하시겠습니까?`
     );
     if (!confirmed) return;
 
-    setSaving(true);
+    setIsSaving(true);
     setMessage(null);
 
     try {
@@ -62,15 +80,21 @@ export default function ImportPage() {
 
       const result = await saveRes.json();
       setMessage(`${result.count}건으로 교체 완료되었습니다.`);
+
+      // 입력 폼 초기화
       setItems([]);
-      setText("");
+      setRawText("");
       setTitle("");
+
+      // 대시보드에 데이터 변경을 알리는 커스텀 이벤트를 발생시킵니다
+      // → 대시보드가 열려있다면 자동으로 새로고침됩니다
       window.dispatchEvent(new Event("payleft:data-changed"));
-      router.push("/");
+
+      router.push("/"); // 대시보드로 이동
     } catch {
       setMessage("저장 중 오류가 발생했습니다.");
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   }
 
@@ -79,8 +103,8 @@ export default function ImportPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-black tracking-tight text-gray-900 sm:text-3xl">데이터 입력</h1>
         <p className="mt-1 text-sm font-medium text-gray-500">할부 항목을 파싱하여 시스템에 등록합니다.</p>
-        
-        {/* Guide Section */}
+
+        {/* 사용 안내 배너 */}
         <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50/50 p-6">
           <div className="flex items-start gap-4">
             <div className="rounded-xl bg-blue-600 p-2 text-white">
@@ -101,6 +125,7 @@ export default function ImportPage() {
       </div>
 
       <div className="space-y-8">
+        {/* 텍스트 붙여넣기 영역 */}
         <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
           <div className="border-b border-gray-50 bg-gray-50/30 px-6 py-4">
             <div className="flex items-center gap-2">
@@ -110,8 +135,8 @@ export default function ImportPage() {
           </div>
           <div className="p-6">
             <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
+              value={rawText}
+              onChange={(e) => setRawText(e.target.value)}
               placeholder={`분할납부(08전기0128137559)\n2025.08.31 10/12회차\n8,800원\n8,800 원\n\n분할납부(쿠팡)\n2025.09.11 9/11회차\n74,200원\n74,200 원`}
               className="h-48 w-full rounded-xl border border-gray-200 bg-gray-50 p-4 font-mono text-xs focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all"
             />
@@ -132,6 +157,7 @@ export default function ImportPage() {
           </div>
         </div>
 
+        {/* 파싱 결과 미리보기 (파싱된 항목이 있을 때만 표시) */}
         {items.length > 0 && (
           <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4">
             <div className="border-b border-gray-50 bg-gray-50/30 px-6 py-4">
@@ -141,6 +167,7 @@ export default function ImportPage() {
                   <h2 className="text-sm font-bold text-gray-700">파싱된 데이터 미리보기 ({items.length}건)</h2>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* 이력 제목 입력 */}
                   <input
                     type="text"
                     value={title}
@@ -150,15 +177,16 @@ export default function ImportPage() {
                   />
                   <button
                     onClick={handleSaveAll}
-                    disabled={saving}
+                    disabled={isSaving}
                     className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-md shadow-emerald-100 disabled:opacity-50 active:scale-95 transition-all"
                   >
                     <Save className="h-4 w-4" />
-                    {saving ? "저장 중..." : "전체 저장하기"}
+                    {isSaving ? "저장 중..." : "전체 저장하기"}
                   </button>
                 </div>
               </div>
             </div>
+
             <div className="p-4">
               <div className="max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
                 <table className="w-full text-left text-[11px] sm:text-xs">
@@ -234,6 +262,7 @@ export default function ImportPage() {
                       </tr>
                     ))}
                   </tbody>
+                  {/* 원금잔액 합계 */}
                   <tfoot>
                     <tr>
                       <td colSpan={4} className="py-4 pr-4 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">

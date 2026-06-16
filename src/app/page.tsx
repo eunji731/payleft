@@ -1,4 +1,20 @@
 "use client";
+/**
+ * page.tsx — 메인 대시보드 페이지 (/)
+ *
+ * Next.js에서 app/page.tsx는 루트 URL("/")에 해당하는 페이지입니다.
+ * "use client" 선언으로 브라우저에서 실행되며, React 훅을 사용할 수 있습니다.
+ *
+ * [페이지 구성]
+ * 1. 헤더: 이력 제목(편집 가능) + 날짜 + 이자율/내보내기 툴바
+ * 2. 요약 카드: 다음달 납부액 / 총 잔여 / 완납 예정월
+ * 3. 월별 차트 + 월별 상세 테이블
+ * 4. 할부 항목 상세 테이블
+ *
+ * [데이터 흐름]
+ * 페이지 로드 시 → API 호출로 데이터 가져오기 → 상태 업데이트 → 렌더링
+ * "payleft:data-changed" 이벤트 수신 시 → 데이터 재조회 (import 페이지에서 저장 후 동기화)
+ */
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,6 +27,7 @@ import EditableTitle from "@/components/EditableTitle";
 import DashboardToolbar from "@/components/DashboardToolbar";
 import { LayoutDashboard } from "lucide-react";
 
+/** 대시보드 헤더에 표시하는 최신 이력 정보 */
 interface LatestBatch {
   id: number;
   title: string;
@@ -18,21 +35,23 @@ interface LatestBatch {
 
 export default function Home() {
   const router = useRouter();
-  const [items, setItems] = useState<InstallmentItem[]>([]);
-  const [latestBatch, setLatestBatch] = useState<LatestBatch | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [interestEnabled, setInterestEnabled] = useState(false);
-  const [interestRate, setInterestRate] = useState("");
+  const [items, setItems] = useState<InstallmentItem[]>([]);       // 할부 항목 목록
+  const [latestBatch, setLatestBatch] = useState<LatestBatch | null>(null); // 최신 이력 정보
+  const [isLoading, setIsLoading] = useState(true);
+  const [interestEnabled, setInterestEnabled] = useState(false);   // 이자 계산 활성화 여부
+  const [interestRate, setInterestRate] = useState("");             // 연 이자율 입력값
 
+  /** 할부 항목 목록을 API에서 가져옵니다 */
   const fetchItems = useCallback(async () => {
     const res = await fetch("/api/installments", { cache: "no-store" });
     if (res.status === 401) {
-      router.push("/login");
+      router.push("/login"); // 로그인이 필요한 경우 로그인 페이지로 이동
       return [];
     }
     return res.json();
   }, [router]);
 
+  /** 가장 최근 이력(제목 표시용)을 API에서 가져옵니다 */
   const fetchLatestBatch = useCallback(async () => {
     const res = await fetch("/api/history/latest", { cache: "no-store" });
     if (!res.ok) return null;
@@ -41,21 +60,27 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // 페이지 로드 시 두 API를 동시에 호출합니다 (Promise.all = 병렬 처리)
     Promise.all([fetchItems(), fetchLatestBatch()]).then(([data, batch]) => {
       setItems(data);
       setLatestBatch(batch);
-      setLoading(false);
+      setIsLoading(false);
     });
 
+    // import 페이지에서 데이터를 저장하면 이 이벤트가 발생합니다
+    // → 대시보드 데이터를 자동으로 새로고침합니다
     const handleDataChanged = () => {
       fetchItems().then((data) => setItems(data));
       fetchLatestBatch().then((batch) => setLatestBatch(batch));
     };
     window.addEventListener("payleft:data-changed", handleDataChanged);
+
+    // 컴포넌트가 사라질 때 이벤트 리스너를 제거합니다 (메모리 누수 방지)
     return () => window.removeEventListener("payleft:data-changed", handleDataChanged);
   }, [fetchItems, fetchLatestBatch]);
 
-  if (loading) {
+  // 데이터 로딩 중 스피너 표시
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
@@ -63,8 +88,11 @@ export default function Home() {
     );
   }
 
+  // 이자 미적용 시 0%, 적용 시 입력한 연 이자율(%)
   const annualRatePercent = interestEnabled ? Number(interestRate) || 0 : 0;
+  // 모든 통계를 한 번에 계산합니다
   const stats = getSummaryStats(items, new Date(), annualRatePercent);
+
   const today = new Date().toLocaleDateString("ko-KR", {
     year: "numeric",
     month: "long",
@@ -74,13 +102,14 @@ export default function Home() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header Section */}
+      {/* 헤더 영역 */}
       <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <div className="rounded-lg bg-indigo-600 p-1.5 text-white">
               <LayoutDashboard className="h-5 w-5" />
             </div>
+            {/* 이력이 있으면 편집 가능한 제목, 없으면 고정 제목 표시 */}
             {latestBatch ? (
               <EditableTitle
                 id={latestBatch.id}
@@ -105,6 +134,7 @@ export default function Home() {
           </p>
         </div>
 
+        {/* 우측 툴바: 이자율 설정 + 내보내기 */}
         <DashboardToolbar
           items={items}
           stats={stats}
@@ -117,10 +147,10 @@ export default function Home() {
       </div>
 
       <div className="space-y-8">
-        {/* Main Stats */}
+        {/* 요약 카드 3개 */}
         <SummaryCards stats={stats} />
 
-        {/* Charts and Trends */}
+        {/* 차트(좌 2/3) + 월별 상세(우 1/3) */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <MonthlyChart summaries={stats.summaries} />
@@ -130,7 +160,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Detailed Data */}
+        {/* 할부 항목 상세 테이블 */}
         <div className="grid grid-cols-1">
           <InstallmentList items={items} annualRatePercent={annualRatePercent} />
         </div>
