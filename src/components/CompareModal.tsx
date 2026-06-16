@@ -70,10 +70,11 @@ export default function CompareModal({ batchA, batchB, onClose }: Props) {
   const totalRemainingDiff = statsNew.totalRemaining - statsOld.totalRemaining;
   const countDiff = newer.items.length - older.items.length;
 
-  const oldNames = new Set(older.items.map((i) => i.name));
-  const newNames = new Set(newer.items.map((i) => i.name));
-  const completedItems = older.items.filter((i) => !newNames.has(i.name));
-  const addedItems = newer.items.filter((i) => !oldNames.has(i.name));
+  const itemKey = (i: Omit<InstallmentItem, "id">) => `${i.name}__${i.payDate}__${i.totalInstallment}`;
+  const oldKeys = new Set(older.items.map(itemKey));
+  const newKeys = new Set(newer.items.map(itemKey));
+  const completedItems = older.items.filter((i) => !newKeys.has(itemKey(i)));
+  const addedItems = newer.items.filter((i) => !oldKeys.has(itemKey(i)));
 
   return (
     <div
