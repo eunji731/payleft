@@ -18,7 +18,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CreditCard, Database, History, LayoutDashboard, LogOut, UserX } from "lucide-react";
+import { CreditCard, Database, History, LayoutDashboard, LogOut, UserX, Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createPortal } from "react-dom";
 
@@ -30,19 +30,18 @@ const tabs = [
 ];
 
 export default function NavTabs() {
-  const pathname = usePathname(); // 현재 페이지의 URL 경로 (예: "/history")
-  const router = useRouter();     // 코드에서 페이지를 이동할 때 사용
+  const pathname = usePathname();
+  const router = useRouter();
   const [userLabel, setUserLabel] = useState<string | null>(null);
   const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // 브라우저용 Supabase 클라이언트로 현재 로그인 사용자를 가져옵니다
     const supabase = createClient();
 
-    // 초기 로드 시 현재 로그인 상태 확인
     supabase.auth.getUser().then(({ data }) => {
       const user = data.user;
       setUserLabel(
@@ -52,7 +51,6 @@ export default function NavTabs() {
       );
     });
 
-    // 로그인/로그아웃 이벤트를 실시간으로 감지하여 UI를 업데이트합니다
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       const user = session?.user;
       setUserLabel(
@@ -62,9 +60,13 @@ export default function NavTabs() {
       );
     });
 
-    // 컴포넌트가 사라질 때 구독을 해제합니다 (메모리 누수 방지)
     return () => subscription.subscription.unsubscribe();
   }, []);
+
+  // 페이지 이동 시 메뉴 닫기
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname]);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -77,7 +79,6 @@ export default function NavTabs() {
     try {
       const res = await fetch("/api/auth/withdraw", { method: "DELETE" });
       if (!res.ok) throw new Error("탈퇴 실패");
-      // 계정이 삭제됐으므로 하드 리다이렉트로 모든 클라이언트 상태를 초기화합니다
       window.location.replace("/login");
     } catch {
       alert("탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
@@ -99,12 +100,11 @@ export default function NavTabs() {
               <span className="text-lg font-black tracking-tight text-gray-900">PayLeft</span>
             </Link>
 
-            <div className="hidden h-8 w-px bg-gray-100 sm:block" />
+            <div className="hidden h-8 w-px bg-gray-100 md:block" />
 
-            {/* 탭 목록 */}
-            <div className="flex h-16 items-center gap-1">
+            {/* 데스크톱 탭 목록 (md 이상에서만 표시) */}
+            <div className="hidden md:flex h-16 items-center gap-1">
               {tabs.map((tab) => {
-                // 루트("/")는 정확히 일치해야 활성화, 나머지는 startsWith로 처리
                 const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
                 const Icon = tab.icon;
                 return (
@@ -119,7 +119,6 @@ export default function NavTabs() {
                   >
                     <Icon className={`h-4 w-4 ${active ? "text-indigo-600" : "text-gray-400"}`} />
                     {tab.label}
-                    {/* 활성 탭 하단에 표시되는 파란색 인디케이터 */}
                     {active && (
                       <span className="absolute bottom-0 left-0 h-1 w-full rounded-full bg-indigo-600 shadow-[0_-2px_8px_rgba(79,70,229,0.4)]" />
                     )}
@@ -129,11 +128,12 @@ export default function NavTabs() {
             </div>
           </div>
 
-          {/* 우측: 사용자 닉네임 + 로그아웃 버튼 */}
+          {/* 우측 영역 */}
           <div className="flex items-center gap-2">
+            {/* 데스크톱 전용: 사용자 정보 및 로그아웃/탈퇴 (md 이상) */}
             {userLabel && (
-              <>
-                <div className="hidden items-center gap-2 pr-2 sm:flex">
+              <div className="hidden md:flex items-center gap-2">
+                <div className="flex items-center gap-2 pr-2">
                   <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                   <span className="text-xs font-bold text-gray-600">{userLabel}</span>
                 </div>
@@ -154,13 +154,75 @@ export default function NavTabs() {
                     탈퇴
                   </button>
                 </div>
-              </>
+              </div>
             )}
+
+            {/* 모바일 메뉴 버튼 (md 미만) */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 md:hidden"
+              aria-expanded={isMenuOpen}
+              aria-label="메뉴 열기"
+            >
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* 회원탈퇴 확인 모달 - Portal을 사용하여 body 직계 자식으로 렌더링 (nav의 stacking context 탈출) */}
+      {/* 모바일 메뉴 드롭다운 */}
+      {isMenuOpen && (
+        <div className="max-h-[calc(100vh-4rem)] overflow-y-auto border-t border-gray-100 bg-white md:hidden animate-in slide-in-from-top duration-200">
+          <div className="space-y-1 p-4">
+            {tabs.map((tab) => {
+              const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
+              const Icon = tab.icon;
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all ${
+                    active
+                      ? "bg-indigo-50 text-indigo-600"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
+                >
+                  <Icon className={`h-5 w-5 ${active ? "text-indigo-600" : "text-gray-400"}`} />
+                  {tab.label}
+                </Link>
+              );
+            })}
+
+            {userLabel && (
+              <div className="mt-4 border-t border-gray-100 pt-4">
+                <div className="mb-4 flex items-center gap-3 px-4">
+                  <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-sm font-bold text-gray-900">{userLabel}</span>
+                  <span className="text-xs font-medium text-gray-400">님 환영합니다</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-200 transition-all"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    로그아웃
+                  </button>
+                  <button
+                    onClick={() => setShowWithdrawConfirm(true)}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-100 transition-all"
+                  >
+                    <UserX className="h-4 w-4" />
+                    탈퇴
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 회원탈퇴 확인 모달 */}
       {mounted && showWithdrawConfirm && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900/60 p-4 backdrop-blur-sm transition-opacity">
           <div className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-gray-900/5 animate-in fade-in zoom-in duration-200">
