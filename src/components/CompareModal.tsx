@@ -1,24 +1,9 @@
 "use client";
-/**
- * CompareModal.tsx — 저장 이력 비교 모달
- *
- * 저장 이력 페이지(/history)에서 두 개의 이력을 선택하면 열리는 팝업입니다.
- * "BEFORE"(이전) vs "AFTER"(이후)를 비교하여 할부 현황의 변화를 보여줍니다.
- *
- * [표시 내용]
- * - 다음달 납부액 변화
- * - 총 잔여 할부금 변화
- * - 완납 예정월 변화 (N개월 단축/연장)
- * - 전체 할부 건수 변화
- * - 완납/제거된 항목 목록
- * - 신규 추가된 항목 목록
- *
- * 날짜가 더 이른 것을 "이전(BEFORE)", 늦은 것을 "이후(AFTER)"로 자동 정렬합니다.
- */
 
+import { useState } from "react";
 import { getSummaryStats, InstallmentItem } from "@/lib/calc";
 import { formatWon } from "@/lib/format";
-import { Minus, TrendingDown, TrendingUp, X, GitCompare, ChevronRight } from "lucide-react";
+import { Minus, TrendingDown, TrendingUp, X, GitCompare, ArrowLeftRight } from "lucide-react";
 
 /** 이력 비교에 필요한 최소 데이터 구조 */
 export interface CompareBatch {
@@ -82,9 +67,12 @@ function AmountDiffBadge({ value }: { value: number }) {
 }
 
 export default function CompareModal({ batchA, batchB, onClose }: Props) {
-  // 생성일 기준으로 이전/이후를 자동 판별합니다
-  const [older, newer] =
-    new Date(batchA.createdAt) <= new Date(batchB.createdAt) ? [batchA, batchB] : [batchB, batchA];
+  // 날짜 기준 초기 정렬: 더 이른 것이 BEFORE
+  const autoOlderFirst = new Date(batchA.createdAt) <= new Date(batchB.createdAt);
+  const [isSwapped, setIsSwapped] = useState(false);
+
+  const swapped = autoOlderFirst ? isSwapped : !isSwapped;
+  const [older, newer] = swapped ? [batchB, batchA] : [batchA, batchB];
 
   // getSummaryStats는 id가 있는 InstallmentItem을 요구하므로 인덱스를 id로 사용합니다
   const toItems = (items: Omit<InstallmentItem, "id">[]): InstallmentItem[] =>
@@ -147,10 +135,14 @@ export default function CompareModal({ batchA, batchB, onClose }: Props) {
               <p className="mt-1 text-xs font-medium text-gray-400">{formatDate(older.createdAt)}</p>
             </div>
 
-            {/* 중앙 화살표 */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 shadow-lg border-4 border-white z-10">
-              <ChevronRight className="h-5 w-5 text-white" />
-            </div>
+            {/* 중앙 스왑 버튼 */}
+            <button
+              onClick={() => setIsSwapped((v) => !v)}
+              title="기준 방향 바꾸기"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 shadow-lg border-4 border-white z-10 hover:bg-indigo-700 active:scale-95 transition-all"
+            >
+              <ArrowLeftRight className="h-4 w-4 text-white" />
+            </button>
 
             <div className="flex-1 rounded-2xl bg-indigo-50/50 p-5 border-l-4 border-indigo-500 shadow-sm">
               <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-white px-2 py-0.5 rounded border border-indigo-100">AFTER</span>
