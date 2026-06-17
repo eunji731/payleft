@@ -47,7 +47,8 @@
       "Bash(npx eslint *)",
       "Bash(cmd *)",
       "Bash(node -e \"const l = require\\('/d/selfProject/PayLeft/node_modules/lucide-react'\\); console.log\\(typeof l.Download, typeof l.FileSpreadsheet, typeof l.FileText, typeof l.Loader2\\)\")",
-      "Bash(grep -o \"\\\\.bg-white\\\\\\\\\\\\\\\\/10{[^}]*}\" /d/selfProject/PayLeft/.next/static/chunks/03yicquwogc4p.css)"
+      "Bash(grep -o \"\\\\.bg-white\\\\\\\\\\\\\\\\/10{[^}]*}\" /d/selfProject/PayLeft/.next/static/chunks/03yicquwogc4p.css)",
+      "PowerShell(Start-Process powershell -ArgumentList \"-NoProfile -Command `\"cd 'D:\\\\selfProject\\\\PayLeft'; npm run dev 2>&1`\"\" -WindowStyle Hidden; Start-Sleep -Seconds 5; Write-Host \"Dev server started\")"
     ]
   }
 }

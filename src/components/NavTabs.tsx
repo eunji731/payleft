@@ -18,8 +18,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CreditCard, Database, History, LayoutDashboard, LogOut } from "lucide-react";
+import { CreditCard, Database, History, LayoutDashboard, LogOut, UserX } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { createPortal } from "react-dom";
 
 // 네비게이션 탭 목록 정의
 const tabs = [
@@ -32,8 +33,12 @@ export default function NavTabs() {
   const pathname = usePathname(); // 현재 페이지의 URL 경로 (예: "/history")
   const router = useRouter();     // 코드에서 페이지를 이동할 때 사용
   const [userLabel, setUserLabel] = useState<string | null>(null);
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     // 브라우저용 Supabase 클라이언트로 현재 로그인 사용자를 가져옵니다
     const supabase = createClient();
 
@@ -65,6 +70,20 @@ export default function NavTabs() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");
+  }
+
+  async function handleWithdraw() {
+    setIsWithdrawing(true);
+    try {
+      const res = await fetch("/api/auth/withdraw", { method: "DELETE" });
+      if (!res.ok) throw new Error("탈퇴 실패");
+      // 계정이 삭제됐으므로 하드 리다이렉트로 모든 클라이언트 상태를 초기화합니다
+      window.location.replace("/login");
+    } catch {
+      alert("탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+      setIsWithdrawing(false);
+      setShowWithdrawConfirm(false);
+    }
   }
 
   return (
@@ -111,22 +130,69 @@ export default function NavTabs() {
           </div>
 
           {/* 우측: 사용자 닉네임 + 로그아웃 버튼 */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {userLabel && (
-              <span className="hidden text-xs font-bold text-gray-500 sm:inline">{userLabel}</span>
-            )}
-            {userLabel && (
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-[11px] font-bold text-gray-500 border border-gray-100 hover:bg-gray-100 hover:text-gray-700 transition-all"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                로그아웃
-              </button>
+              <>
+                <div className="hidden items-center gap-2 pr-2 sm:flex">
+                  <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-xs font-bold text-gray-600">{userLabel}</span>
+                </div>
+                
+                <div className="flex items-center gap-1 rounded-2xl bg-gray-100/50 p-1">
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-gray-500 hover:bg-white hover:text-gray-900 hover:shadow-sm transition-all"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    로그아웃
+                  </button>
+                  <button
+                    onClick={() => setShowWithdrawConfirm(true)}
+                    className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-600 transition-all"
+                  >
+                    <UserX className="h-3.5 w-3.5" />
+                    탈퇴
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>
       </div>
+
+      {/* 회원탈퇴 확인 모달 - Portal을 사용하여 body 직계 자식으로 렌더링 (nav의 stacking context 탈출) */}
+      {mounted && showWithdrawConfirm && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900/60 p-4 backdrop-blur-sm transition-opacity">
+          <div className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-gray-900/5 animate-in fade-in zoom-in duration-200">
+            <div className="p-6">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-red-50">
+                <UserX className="h-6 w-6 text-red-600" />
+              </div>
+              <h2 className="text-xl font-black text-gray-900">정말 탈퇴하시겠어요?</h2>
+              <p className="mt-2 text-sm leading-relaxed text-gray-500">
+                탈퇴 시 모든 할부 데이터와 저장 이력이 <span className="font-bold text-red-600">즉시 영구 삭제</span>되며, 이 작업은 절대로 되돌릴 수 없습니다.
+              </p>
+            </div>
+            <div className="flex gap-3 bg-gray-50 px-6 py-4">
+              <button
+                onClick={() => setShowWithdrawConfirm(false)}
+                disabled={isWithdrawing}
+                className="flex-1 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleWithdraw}
+                disabled={isWithdrawing}
+                className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white shadow-md shadow-red-100 hover:bg-red-700 active:scale-[0.98] transition-all disabled:opacity-60"
+              >
+                {isWithdrawing ? "탈퇴 처리 중..." : "탈퇴하기"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </nav>
   );
 }

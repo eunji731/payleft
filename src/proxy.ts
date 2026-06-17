@@ -18,7 +18,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // 로그인 없이도 접근 가능한 공개 경로 목록
-const PUBLIC_PATHS = ["/login", "/auth/kakao", "/auth/callback"];
+const PUBLIC_PATHS = ["/login", "/auth/kakao", "/auth/callback", "/api/auth/withdraw"];
 
 export default async function proxy(request: NextRequest) {
   // NextResponse.next()는 요청을 그대로 다음 단계로 통과시키는 응답입니다.
